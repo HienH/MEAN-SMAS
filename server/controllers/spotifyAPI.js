@@ -29,7 +29,7 @@ module.exports.loginSpotify = ((req, res) => {
 
     request(getTokenOptions)
         .then((tokenOptions) => {
-            token = `Bearer ${JSON.parse(tokenOptions).access_token}`
+            token = `Bearer ${JSON.parse(tokenOptions).access_token}`;
             //////////////// SECOND REQUEST //////////////////
             const getUserHeaders = {
                 'Authorization': token,
@@ -45,7 +45,7 @@ module.exports.loginSpotify = ((req, res) => {
 
             request(getUserOptions)
                 .then((userData) => {
-                    const user_id = JSON.parse(userData).id
+                    const user_id = JSON.parse(userData).id;
                     ////////////////////// THIRD REQUEST ////////////////////
 
                     var dataString = '{"name":"API created"}';
@@ -68,12 +68,12 @@ module.exports.loginSpotify = ((req, res) => {
                             'Content-Type': 'application/x-www-form-urlencoded',
                         };
 
-                        playListiD = JSON.parse(playlistData).id
+                        playListiD = JSON.parse(playlistData).id;
 
                         ///////////////////// FORTH REQUEST ////////////////////////
                         for (let i = 0; i < songs.length; i++) {
-                            const song = encodeURIComponent(songs[0].song);
-                            const artist = encodeURIComponent(songs[0].artist);
+                            const song = encodeURIComponent(songs[i].song);
+                            const artist = encodeURIComponent(songs[i].artist);
 
                             const searchSong = {
                                 url: `https://api.spotify.com/v1/search?q=${song}&type=track&artist=${artist}&market=US&offset=0&limit=1`,
@@ -82,8 +82,8 @@ module.exports.loginSpotify = ((req, res) => {
                             };
 
                             request(searchSong).then((songInfo) => {
-                                const track = JSON.parse(songInfo)
-                                const items = track["tracks"]["items"]
+                                const track = JSON.parse(songInfo);
+                                const items = track["tracks"]["items"];
                                 songId = items[0]["id"];
 
                                 ///////////////////// FIFTH REQUEST ////////////////////////
@@ -107,6 +107,65 @@ module.exports.loginSpotify = ((req, res) => {
                     res.status(error.statusCode).send(error);
                 });
         });
+
+    const spotify = {
+        token: null,
+
+        getToken: function() {
+            const url = req.headers.referer;
+            const urlSplit = url.indexOf('=');
+            const code = url.slice(urlSplit + 1);
+
+            const headers = {
+                'Authorization': 'Basic MTY3ZTBiZGM1MWEyNDFjOWExYzc4MWIwZjhjM2RmN2Y6YWI4MWY4MTA3NDk3NDkwOThlNTExYTU0ZjA2OGIxNTU=',
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+            };
+
+            const body = 'grant_type=authorization_code&code=' + code + '&redirect_uri=http%3A%2F%2Flocalhost%3A4200%2Fhome';
+
+            const options = {
+                url: 'https://accounts.spotify.com/api/token',
+                method: 'POST',
+                headers: headers,
+                body: body
+            };
+
+            return request(options);
+        },
+
+        setToken: function(token) {
+            spotify.token = JSON.parse(token).access_token;
+        },
+
+        getUser: function() {
+            const headers = {
+                'Authorization': `Bearer ${spotify.token}`,
+                'Accept': 'application/json',
+            };
+
+            const options = {
+                url: 'https://api.spotify.com/v1/me',
+                method: 'GET',
+                headers: headers,
+            };
+
+            return request(options);
+        },
+    };
+
+    function main() {
+        return spotify.getToken()
+            .then(spotify.setToken)
+            .then(spotify.getUser)
+    }
+
+    main().then(function(result) {
+        res.send(result);
+    });
+
+
+
 
 });
 
